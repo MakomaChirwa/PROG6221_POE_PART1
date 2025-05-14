@@ -35,13 +35,22 @@ namespace POE_PART_1
 
         public void SaveMemory()
         {
-            memoryData.Clear();
-            if (!string.IsNullOrEmpty(Username))
-                memoryData.Add("name:" + Username);
-            if (!string.IsNullOrEmpty(FavoriteTopic))
-                memoryData.Add("favorite:" + FavoriteTopic);
+            // Do not overwrite unrelated memory lines (like "Interest:")
+            var filtered = new List<string>();
 
-            File.WriteAllLines(memoryFilePath, memoryData);
-        }
+            foreach (var line in memoryData)
+            {
+                if (!line.StartsWith("name:") && !line.StartsWith("favorite:"))
+                    filtered.Add(line);
+            }
+
+            if (!string.IsNullOrEmpty(Username))
+                filtered.Add("name:" + Username);
+            if (!string.IsNullOrEmpty(FavoriteTopic))
+                filtered.Add("favorite:" + FavoriteTopic);
+
+            File.WriteAllLines(memoryFilePath, filtered);
+            memoryData = filtered;
+        } 
     } // end of class
 } // end of file

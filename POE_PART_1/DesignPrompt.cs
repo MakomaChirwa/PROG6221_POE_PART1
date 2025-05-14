@@ -49,6 +49,10 @@ namespace POE_PART_1
             Console.ForegroundColor = ConsoleColor.White;
             user_name = Console.ReadLine();
 
+            // Save to memory
+            memory.Username = user_name;
+            memory.SaveMemory();
+
             // Welcome the user
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.Write("BroadBox:-> ");
@@ -80,34 +84,37 @@ namespace POE_PART_1
             } while (true);
         }
 
-        // method to check key words and save the users favourite topic
+        // method to check key words and remember the users favourite topic
         public void CheckForKeyWordsAndSave(string input)
         {
+
             string lower = input.ToLower();
 
-            if (lower.Contains("interested") || lower.Contains("interested"))
+            if (lower.Contains("interested in") || lower.Contains("favourite"))
             {
                 string topic = ExtractTopic(input);
                 if (!string.IsNullOrEmpty(topic))
                 {
-                        SaveToMemory($"Interest:{topic}");
-                        Console.ForegroundColor = ConsoleColor.Cyan;
-                        Console.WriteLine($"BroadBox:-> Got it! I’ll remember you're interested in '{topic}'.");
+                    SaveToMemory($"Interest:{topic}");
+
+                    memory.FavoriteTopic = topic;
+                    memory.SaveMemory();
+
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"BroadBox:-> Got it! I’ll remember you're interested in '{topic}'.");
                 }
             }
-            else if(lower.Contains("what am i interested"))
+            else if (lower.Contains("what am i interested in"))
             {
-                string foundInterest = memoryList.Find(item => item.StartsWith("Interest:"));
-                if (foundInterest != null)
+                if (!string.IsNullOrEmpty(memory.FavoriteTopic))
                 {
-                    string topic = foundInterest.Split(':')[1];
-                    Console.WriteLine($"BroadBox:-> You mentioned earlier you're interested in {topic}.");
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.WriteLine($"BroadBox:-> You mentioned earlier you're interested in {memory.FavoriteTopic}.");
                 }
                 else
                 {
                     Console.WriteLine("BroadBox:-> I don't have a record of your interests yet.");
                 }
-
             }
         }
         private string ExtractTopic(string sentence)
