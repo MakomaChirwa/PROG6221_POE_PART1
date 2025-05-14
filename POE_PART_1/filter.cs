@@ -180,23 +180,7 @@ namespace POE_PART_1
                 }
             }
 
-        private void StoreSentimentWords()
-        {
-            sentimentWords.Add("worried");
-            sentimentMessages.Add("It's understandable and okay to feel worried.");
-
-            sentimentWords.Add("frustrated");
-            sentimentMessages.Add("Cybersecurity can feel frustrating sometimes, but I'm here to help.");
-
-            sentimentWords.Add("curious");
-            sentimentMessages.Add("I love that you're curious! Let's explore something together.");
-
-            sentimentWords.Add("scared");
-            sentimentMessages.Add("It's okay to feel scared — cybersecurity can be intimidating at first.");
-
-            sentimentWords.Add("confused");
-            sentimentMessages.Add("If you're confused, don't worry. I'm here to clarify anything.");
-        }
+       
 
     } // end of class
 } // end of file
