@@ -1,107 +1,166 @@
 ﻿using System.Collections.Generic;
 using System;
+using System.Runtime.Remoting.Messaging;
+using System.Collections;
+using System.Net.NetworkInformation;
+using System.IO;
 
 namespace POE_PART_1
 {
-        public class filter
+    public class filter
+    {
+        private List<string> topics = new List<string>();
+        private List<List<string>> topicReplies = new List<List<string>>();
+        private HashSet<string> ignoreWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private HashSet<string> cybersecurityKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private List<string> sentimentWords = new List<string>();
+        private List<string> sentimentMessages = new List<string>();
+        private string lastTopic = null;
+        private Random rand = new Random();
+        public filter()
         {
-            private List<string> replies = new List<string>();
-            private HashSet<string> ignoreWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            private HashSet<string> cybersecurityKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            public filter()
-            {
 
-                // Initialize stored replies, ignored words, and cybersecurity keywords
-                StoreReplies();
-                StoreIgnoreWords();
-                StoreCybersecurityKeywords();
+            // Initialize stored replies, ignored words, cybersecurity and sentiment keywords 
+            StoreTopicsReplies();
+            StoreIgnoreWords();
+            StoreCybersecurityKeywords();
+            StoreSentimentWords(); 
+        }
+        public string ProcessQuestions(string question, User_Memory memory)
+        {
+            if (string.IsNullOrEmpty(question))
+                return "Please enter a valid question.";
+
+            string lowerInput = question.ToLower();
+
+            // Detect sentiment
+            string sentiment = DetectSentiment(lowerInput);
+            int sentimentIndex = sentimentWords.IndexOf(sentiment); 
+
+            if ((lowerInput.Contains("remind") || lowerInput.Contains("favourite")) && !string.IsNullOrEmpty(memory.FavoriteTopic))
+            {
+                int Index = topics.IndexOf(memory.FavoriteTopic);
+                if (Index < 0) 
+                {
+                    var responses = topicReplies[Index];
+                    return $"{memory.Username}, here something about your favorite topic ({memory.FavoriteTopic}):\n{responses[rand.Next(responses.Count)]}";
+                }
             }
-            public string ProcessQuestions(string question)
+            // Split input into words, filter ignored words, and keep only cybersecurity-related words
+            string[] words = question.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            List<string> filteredWords = new List<string>();
+
+            foreach (var word in words)
             {
-                if (string.IsNullOrEmpty(question))
+                string lowerWord = word.ToLower();
+                if (!ignoreWords.Contains(lowerWord) && cybersecurityKeywords.Contains(lowerWord))
                 {
-                    return "Please enter a valid question.";
+                    filteredWords.Add(lowerWord);
                 }
-
-                // Split input into words, filter ignored words, and keep only cybersecurity-related words
-                string[] words = question.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                List<string> filteredWords = new List<string>();
-
-                foreach (var word in words)
-                {
-                    string lowerWord = word.ToLower();
-                    if (!ignoreWords.Contains(lowerWord) && cybersecurityKeywords.Contains(lowerWord))
-                    {
-                        filteredWords.Add(lowerWord);
-                    }
-                }
+            }
+            // If sentiment detected
+            if (sentimentIndex >= 0)
+            {
+                string msg = sentimentMessages[sentimentIndex];
 
                 if (filteredWords.Count == 0)
-                {
-                    return "Your question doesn't seem to be related to cybersecurity. Please ask something related to online security, hacking threats, or data protection.";
-                }
+                    return msg + " Feel free to ask any cybersecurity-related question.";
+                else
+                    return msg + "\nHere's something useful:\n" + GetTopicResponse(filteredWords[0], memory);
+            }
 
-                // Search for replies
-                HashSet<string> matchedReplies = new HashSet<string>();
-
-                foreach (var word in filteredWords)
+            if (filteredWords.Count == 0)
+            {
+                if (!string.IsNullOrEmpty(lastTopic))
                 {
-                    foreach (var reply in replies)
+                    int index = topics.IndexOf(lastTopic);
+                    if (index >= 0)
                     {
-                        if (reply.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            matchedReplies.Add(reply);
-                        }
+                        return $"Following up on {lastTopic}, here's more info:\n{topicReplies[index][rand.Next(topicReplies[index].Count)]}";
                     }
                 }
 
-                // Return response
-                if (matchedReplies.Count > 0)
-                {
-                    return "Possible answers:\n- " + string.Join("\n- ", matchedReplies);
-                }
-                else
-                {
-                    return "I can only answer cybersecurity-related questions. Please try again.";
-                }
-
-
+                return "Hmm, I couldn't detect a cybersecurity topic in your question. Try again?";
             }
 
-            private void StoreReplies()
+            // Match and respond to detected keyword
+            return GetTopicResponse(filteredWords[0], memory);
+
+        } // end of processquestions 
+
+        private string GetTopicResponse(string topic, User_Memory memory)
+        {
+            lastTopic = topic;
+            int index = topics.IndexOf(topic);
+            if (index >= 0)
             {
-                replies.Add("Passwords need to be protected.");
-                replies.Add("Importance of password:" +
-                   "\r\n\r\nPasswords are the first line of defense against cyber threats." +
-                   "\r\n\r\nWeak passwords are a major cause of data breaches." +
-                   "\r\n\r\nA strong password protects sensitive data and online accounts.");
-                replies.Add("Structured Query Language (SQL) plays a crucial role in cybersecurity, both as a target of cyberattacks (SQL Injection) and as a tool for security analysis (log monitoring, threat detection, and auditing).\r\n\r\n." +
-                    "What is SQL Injection?" +
-                    "\r\nSQL injection (SQLi) is a common web attack where hackers exploit vulnerable SQL queries to manipulate a database, steal data, or gain unauthorized access." +
-                    "How SQL Injection Works" +
-                    "\r\n\r\nAttackers insert malicious SQL code into input fields (e.g., login forms, search bars)." +
-                    "\r\n\r\nThe server processes the input as an SQL query, allowing attackers to bypass authentication, retrieve sensitive information, or alter data." +
-                    "How to Prevent SQL Injection:" +
-                    "✅ Use Stored Procedures to limit direct SQL execution." +
-                    "\r\n✅ Sanitize user input—block special characters (', --, ;, etc.)." +
-                    "\r\n✅ Limit database permissions—use the least privilege principle." +
-                    "\r\n✅ Use Web Application Firewalls (WAFs) to detect and block SQLi attempts.");
-                replies.Add("The most common cyber attack is phishing." +
-                    "\r\n\r\nOthers are ransomware, data breaches, identity theft.");
-                replies.Add("Ways to deal with threats:" +
-                    "\r\n\r\nKeep software and operating systems updated to patch vulnerabilities." +
-                    "\r\n✅ Use strong passwords and enable Multi-Factor Authentication (MFA)." +
-                    "\r\n✅ Be cautious of phishing attacks—don’t click on suspicious links or attachments." +
-                    "\r\n✅ Back up important data regularly (cloud + offline storage)." +
-                    "\r\n✅ Use firewalls and antivirus software to protect against malware." +
-                    "\r\n✅ Limit public Wi-Fi use—use a VPN for secure browsing.\r\n\r\n");
-                replies.Add("What to do if you have been attacked:" + "" +
-                    " 1️⃣ Disconnect from the internet (for malware, ransomware, or unauthorized access)." +
-                    "\r\n2️⃣ Change affected passwords and notify your security team." +
-                    "\r\n3️⃣ Check bank accounts and emails for signs of fraud." +
-                    "\r\n4️⃣ Scan your system using updated antivirus software." +
-                    "\r\n5️⃣ Report cyber incidents to IT security, law enforcement, or cybersecurity authorities.\r\n\r\n.");
+                var responses = topicReplies[index];
+                return $"{memory.Username}, here's something about {topic}:\n{responses[rand.Next(responses.Count)]}";
             }
+
+            return $"I recognize that as a cybersecurity keyword, but I don’t have tips on {topic} yet.";
+        }
+        
+        //  detect sentiment 
+        private string DetectSentiment(string input)
+        {
+            for (int i = 0; i < sentimentWords.Count; i++)
+            {
+                if (input.Contains(sentimentWords[i]))
+                    return sentimentWords[i];
+            }
+            return "neutral";
+        }
+      public void TryCaptureUserPreference(string input, User_Memory memory)
+        {
+            string lowered = input.ToLower(); 
+            foreach (var keyword in cybersecurityKeywords)
+            {
+                if (lowered.Contains("favorite") && lowered.Contains(keyword))
+                {
+                    memory.FavoriteTopic = keyword;
+                }
+            }
+        }
+
+        private void StoreTopicsReplies()
+            {
+            // use name index 
+            topics.Add("password");
+            topicReplies.Add(new List<string>
+        {
+            "Use strong, unique passwords for each account.",
+            "Avoid common passwords like '123456'.",
+            "A good password should be at least 12 characters with mixed symbols."
+        });
+
+            topics.Add("phishing");
+            topicReplies.Add(new List<string>
+        {
+            "Phishing is a fake message pretending to be real. Don’t click suspicious links.",
+            "Hover over email links before clicking to verify the URL.",
+            "Never give out personal info unless you're sure of the recipient."
+        });
+
+            topics.Add("sql");
+            topicReplies.Add(new List<string>
+        {
+            "SQL Injection allows hackers to access your database via vulnerable queries.",
+            "Use prepared statements or stored procedures to avoid SQL Injection.",
+            "Always sanitize user inputs in database-driven apps."
+        });
+
+            topics.Add("malware");
+            topicReplies.Add(new List<string>
+        {
+            "Malware can steal your data or damage your files. Use antivirus software.",
+            "Keep your OS and apps updated to block malware.",
+            "Avoid downloading files from untrusted sources."
+        });
+
+            // Add more as needed...
+        }
+
 
             private void StoreIgnoreWords()
             {
@@ -114,13 +173,32 @@ namespace POE_PART_1
 
             private void StoreCybersecurityKeywords()
             {
-                string[] keywords = { "password", "sql", "injection", "phishing", "firewall", "hacking", "authentication", "encryption", "data", "security", "malware", "virus", "breach", "protection", "attack", "attacked" };
+                string[] keywords = { "password", "sql", "injection", "phishing", "firewall", "hacking", "hacked", "authentication", "encryption", "data", "security", "malware", "virus", "breach", "protection", "attack", "attacked" };
                 foreach (var word in keywords)
                 {
                     cybersecurityKeywords.Add(word);
                 }
             }
-        } // end of class
-    } // end of file
+
+        private void StoreSentimentWords()
+        {
+            sentimentWords.Add("worried");
+            sentimentMessages.Add("It's understandable and okay to feel worried.");
+
+            sentimentWords.Add("frustrated");
+            sentimentMessages.Add("Cybersecurity can feel frustrating sometimes, but I'm here to help.");
+
+            sentimentWords.Add("curious");
+            sentimentMessages.Add("I love that you're curious! Let's explore something together.");
+
+            sentimentWords.Add("scared");
+            sentimentMessages.Add("It's okay to feel scared — cybersecurity can be intimidating at first.");
+
+            sentimentWords.Add("confused");
+            sentimentMessages.Add("If you're confused, don't worry. I'm here to clarify anything.");
+        }
+
+    } // end of class
+} // end of file
 
 

@@ -15,6 +15,8 @@ namespace POE_PART_1
             new logo();
             new greeting();
             new DesignPrompt();
+            new Check_writeFile();
+            new User_Memory();
             new filter();
         }
     }
